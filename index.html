@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Investigators</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f0f0f;
+    color: #eaeaea;
+    text-align: center;
+}
+
+h1, h2 {
+    margin-top: 20px;
+}
+
+.panel {
+    display: none;
+    max-width: 420px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #1c1c1c;
+    border-radius: 10px;
+}
+
+input, textarea {
+    width: 90%;
+    margin: 8px 0;
+    padding: 10px;
+    background: #2a2a2a;
+    border: none;
+    border-radius: 5px;
+    color: white;
+}
+
+button {
+    margin: 6px;
+    padding: 10px 16px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2563eb;
+}
+
+.item-box {
+    background: #2a2a2a;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 6px;
+    text-align: left;
+}
+
+.small {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<h1>THE INVESTIGATORS</h1>
+
+<div id="home" class="panel" style="display:block;">
+    <button onclick="show('join')">Join Us</button>
+    <button onclick="show('memberLogin')">Member Login</button>
+    <button onclick="show('adminLogin')">Admin Login</button>
+</div>
+
+<!-- JOIN -->
+<div id="join" class="panel">
+    <h2>Join Request</h2>
+    <input id="jName" placeholder="Name">
+    <input id="jUser" placeholder="Username">
+    <input id="jPass" type="password" placeholder="Password">
+    <textarea id="jReason" placeholder="Why do you want to join?"></textarea>
+    <p id="joinMsg"></p>
+    <button onclick="submitJoin()">Submit</button>
+    <button onclick="back()">Back</button>
+</div>
+
+<!-- MEMBER LOGIN -->
+<div id="memberLogin" class="panel">
+    <h2>Member Login</h2>
+    <input id="mUser" placeholder="Username">
+    <input id="mPass" type="password" placeholder="Password">
+    <p id="memberMsg"></p>
+    <button onclick="loginMember()">Login</button>
+    <button onclick="back()">Back</button>
+</div>
+
+<!-- MEMBER PANEL -->
+<div id="memberPanel" class="panel">
+    <h2>Active Cases</h2>
+    <div id="memberCases"></div>
+    <button onclick="showHistory()">Case History</button>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<!-- CASE HISTORY -->
+<div id="history" class="panel">
+    <h2>Completed Cases</h2>
+    <div id="historyBox"></div>
+    <button onclick="show('memberPanel')">Back</button>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="adminLogin" class="panel">
+    <h2>Admin Login</h2>
+    <input id="aUser" placeholder="Admin Username">
+    <input id="aPass" type="password" placeholder="Admin Password">
+    <p id="adminMsg"></p>
+    <button onclick="loginAdmin()">Login</button>
+    <button onclick="back()">Back</button>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="panel">
+    <h2>Admin Panel</h2>
+
+    <h3>Join Requests</h3>
+    <div id="reqBox"></div>
+
+    <h3>Members</h3>
+    <div id="memBox"></div>
+
+    <h3>Cases</h3>
+    <textarea id="newCase" placeholder="New case details"></textarea>
+    <button onclick="addCase()">Add Case</button>
+    <div id="caseBox"></div>
+
+    <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+/* STORAGE */
+const MEMBERS = JSON.parse(localStorage.getItem("members") || "[]");
+const REQUESTS = JSON.parse(localStorage.getItem("requests") || "[]");
+const CASES = JSON.parse(localStorage.getItem("cases") || "[]");
+
+/* ADMIN CREDS */
+const ADMIN_USER = "wassim&jordan";
+const ADMIN_PASS = "the investigators";
+
+/* HELPERS */
+function save() {
+    localStorage.setItem("members", JSON.stringify(MEMBERS));
+    localStorage.setItem("requests", JSON.stringify(REQUESTS));
+    localStorage.setItem("cases", JSON.stringify(CASES));
+}
+
+function show(id) {
+    document.querySelectorAll(".panel").forEach(p => p.style.display="none");
+    document.getElementById(id).style.display="block";
+}
+
+function back() { show("home"); }
+function logout() { show("home"); }
+
+/* JOIN */
+function submitJoin() {
+    const u = jUser.value.trim();
+    if (MEMBERS.find(m=>m.user===u) || REQUESTS.find(r=>r.user===u)) {
+        joinMsg.textContent = "Username already used";
+        return;
+    }
+    REQUESTS.push({
+        name:jName.value, user:u, pass:jPass.value, reason:jReason.value
+    });
+    save();
+    joinMsg.textContent = "Request sent!";
+}
+
+/* MEMBER LOGIN */
+function loginMember() {
+    const m = MEMBERS.find(x=>x.user===mUser.value && x.pass===mPass.value);
+    if (!m) { memberMsg.textContent="Wrong login"; return; }
+    show("memberPanel");
+    renderMemberCases();
+}
+
+/* ADMIN LOGIN */
+function loginAdmin() {
+    if (aUser.value===ADMIN_USER && aPass.value===ADMIN_PASS) {
+        show("adminPanel");
+        renderAdmin();
+    } else {
+        adminMsg.textContent="Incorrect admin login";
+    }
+}
+
+/* ADMIN RENDER */
+function renderAdmin() {
+    reqBox.innerHTML = REQUESTS.map((r,i)=>`
+        <div class="item-box">
+        <b>${r.name}</b> (${r.user})<br>
+        ${r.reason}<br>
+        <button onclick="accept(${i})">Accept</button>
+        <button onclick="decline(${i})">Decline</button>
+        </div>
+    `).join("") || "<p class='small'>No requests</p>";
+
+    memBox.innerHTML = MEMBERS.map((m,i)=>`
+        <div class="item-box">
+        ${m.user}
+        <button onclick="MEMBERS.splice(${i},1);save();renderAdmin()">Remove</button>
+        </div>
+    `).join("") || "<p class='small'>No members</p>";
+
+    caseBox.innerHTML = CASES.map((c,i)=>`
+        <div class="item-box">
+        ${c.text}<br>
+        ${c.done?"<i>Completed</i>":`<button onclick="CASES[${i}].done=true;save();renderAdmin()">Complete</button>`}
+        <button onclick="CASES.splice(${i},1);save();renderAdmin()">Delete</button>
+        </div>
+    `).join("");
+}
+
+function accept(i){
+    MEMBERS.push(REQUESTS[i]);
+    REQUESTS.splice(i,1);
+    save(); renderAdmin();
+}
+function decline(i){
+    REQUESTS.splice(i,1);
+    save(); renderAdmin();
+}
+function addCase(){
+    if(!newCase.value) return;
+    CASES.push({text:newCase.value, done:false});
+    newCase.value="";
+    save(); renderAdmin();
+}
+
+/* MEMBER CASES */
+function renderMemberCases(){
+    memberCases.innerHTML = CASES.filter(c=>!c.done)
+        .map(c=>`<div class="item-box">${c.text}</div>`).join("")
+        || "<p>No active cases</p>";
+}
+function showHistory(){
+    show("history");
+    historyBox.innerHTML = CASES.filter(c=>c.done)
+        .map(c=>`<div class="item-box">${c.text}</div>`).join("")
+        || "<p>No completed cases</p>";
+}
+</script>
+
+</body>
+</html>
